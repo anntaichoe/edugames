@@ -1,0 +1,182 @@
+export default function App() {
+  const [currentQuestion, setCurrentQuestion] = React.useState(0);
+  const [score, setScore] = React.useState(0);
+  const [userAnswer, setUserAnswer] = React.useState('');
+  const [feedback, setFeedback] = React.useState('');
+  const [questions, setQuestions] = React.useState([]);
+  const [showAnswer, setShowAnswer] = React.useState(false);
+  const [isGameComplete, setIsGameComplete] = React.useState(false);
+  const [time, setTime] = React.useState(0);
+  const [isRunning, setIsRunning] = React.useState(false);
+  const inputRef = React.useRef(null);
+
+  const generateQuestion = () => {
+    const num1 = Math.floor(Math.random() * 15) + 1;
+    const num2 = Math.floor(Math.random() * 15) + 1;
+    return {
+      num1,
+      num2,
+      correctAnswer: num1 * num2
+    };
+  };
+
+  React.useEffect(() => {
+    const newQuestions = Array(10).fill(null).map(() => generateQuestion());
+    setQuestions(newQuestions);
+    setIsRunning(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!isGameComplete && inputRef.current && !showAnswer) {
+      inputRef.current.focus();
+    }
+  }, [currentQuestion, showAnswer, isGameComplete]);
+
+  React.useEffect(() => {
+    let intervalId;
+    if (isRunning && !isGameComplete) {
+      intervalId = setInterval(() => {
+        setTime(prevTime => prevTime + 1);
+      }, 1000);
+    }
+    return () => clearInterval(intervalId);
+  }, [isRunning, isGameComplete]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const checkAnswer = () => {
+    if (showAnswer || !userAnswer) return;
+    
+    const currentQ = questions[currentQuestion];
+    const isCorrect = parseInt(userAnswer) === currentQ.correctAnswer;
+    
+    if (isCorrect) {
+      setScore(score + 1);
+      setFeedback('Correct! 🎉');
+    } else {
+      setFeedback(`Incorrect. The answer is ${currentQ.correctAnswer}`);
+    }
+    
+    setShowAnswer(true);
+    setTimeout(() => {
+      if (currentQuestion < 9) {
+        setCurrentQuestion(currentQuestion + 1);
+        setUserAnswer('');
+        setFeedback('');
+        setShowAnswer(false);
+      } else {
+        setIsGameComplete(true);
+        setIsRunning(false);
+      }
+    }, 2000);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      checkAnswer();
+    }
+  };
+
+  const resetGame = () => {
+    setQuestions(Array(10).fill(null).map(() => generateQuestion()));
+    setCurrentQuestion(0);
+    setScore(0);
+    setUserAnswer('');
+    setFeedback('');
+    setShowAnswer(false);
+    setIsGameComplete(false);
+    setTime(0);
+    setIsRunning(true);
+  };
+
+  if (questions.length === 0) return <div>Loading...</div>;
+
+  return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 font-['Proxima Nova']">
+      <Card className="w-full max-w-md bg-gray-800 text-white">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center font-['Proxima Nova']">Multiplication Game</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progress: {currentQuestion + 1}/10</span>
+                <span>Score: {score}</span>
+              </div>
+              <Progress value={(currentQuestion + 1) * 10} className="h-2" />
+              <div className="text-center text-sm">
+                Time: {formatTime(time)}
+              </div>
+            </div>
+
+            {!isGameComplete ? (
+              <div className="space-y-4">
+                <div className="text-xl text-center">
+                  What is {questions[currentQuestion].num1} × {questions[currentQuestion].num2}?
+                </div>
+                
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={userAnswer}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setUserAnswer(value);
+                  }}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter your answer"
+                  className="bg-gray-700 text-white border-gray-600 font-['Proxima Nova']"
+                  disabled={showAnswer}
+                />
+                
+                {feedback && (
+                  <div className={`text-center ${feedback.includes('Correct') ? 'text-green-400' : 'text-red-400'}`}>
+                    {feedback}
+                  </div>
+                )}
+                
+                <Button 
+                  onClick={checkAnswer}
+                  className="w-full bg-blue-600 hover:bg-blue-700 font-['Proxima Nova']"
+                  disabled={showAnswer || !userAnswer}
+                >
+                  Submit
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-xl text-center">
+                  Game Complete!
+                </div>
+                <div className="flex justify-center gap-6 text-center">
+                  <div>Final Score: {score}/10</div>
+                  <div>Time taken: {formatTime(time)}</div>
+                </div>
+                <div className="text-center text-lg">
+                  {score === 10 ? "Perfect score! 🌟" :
+                   score >= 7 ? "Great job! 👍" :
+                   score >= 5 ? "Good effort! 💪" :
+                   "Keep practicing! 📚"}
+                </div>
+                <Button 
+                  onClick={resetGame} 
+                  className="w-full bg-green-600 hover:bg-green-700 font-['Proxima Nova']"
+                >
+                  Play Again
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
